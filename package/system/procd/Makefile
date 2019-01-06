@@ -11,10 +11,9 @@ PKG_NAME:=procd
 PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
-PKG_SOURCE_URL=$(PROJECT_GIT)/project/procd.git
-PKG_SOURCE_DATE:=2018-12-27
-PKG_SOURCE_VERSION:=e2b055edf26419c183f4bdc3aa47da789081f72e
-PKG_MIRROR_HASH:=de5dbf7b48a0ec9fa0ec741f00bd4f7725c3db80ec0e85e623f13ea00b980e36
+PKG_SOURCE_URL=https://github.com/LeonPoon/procd.git
+PKG_SOURCE_DATE:=2019-01-06
+PKG_SOURCE_VERSION:=82d14f95ab4b80b55fde0ff8c7d6b7f325554f01
 CMAKE_INSTALL:=1
 
 PKG_LICENSE:=GPL-2.0
@@ -74,6 +73,21 @@ config PROCD_ZRAM_TMPFS
 	bool
 	default n
 	prompt "Mount /tmp using zram."
+
+config PROCD_WATCHDOG_DISABLE
+	bool
+	default n
+	prompt "Do not init watchdog"
+
+config PROCD_USE_CUSTOM_PATH
+	bool
+	default n
+	prompt "Configure custom path to procd executable"
+
+config PROCD_CUSTOM_PATH
+	depends on PROCD_USE_CUSTOM_PATH
+	string "Custom procd path"
+	default "/sbin/procd"
 endmenu
 endef
 
@@ -82,8 +96,16 @@ ifeq ($(CONFIG_PROCD_SHOW_BOOT),y)
   CMAKE_OPTIONS += -DSHOW_BOOT_ON_CONSOLE=1
 endif
 
+ifeq ($(CONFIG_PROCD_WATCHDOG_DISABLE),y)
+  CMAKE_OPTIONS += -DWATCHDOG_DISABLE=1
+endif
+
 ifeq ($(CONFIG_PROCD_ZRAM_TMPFS),y)
   CMAKE_OPTIONS += -DZRAM_TMPFS=1
+endif
+
+ifeq ($(CONFIG_PROCD_USE_CUSTOM_PATH),y)
+  CMAKE_OPTIONS += -DPROCD_CUSTOM_SPAWN_PATH=$(CONFIG_PROCD_CUSTOM_PATH)
 endif
 
 ifdef CONFIG_PACKAGE_procd-ujail
