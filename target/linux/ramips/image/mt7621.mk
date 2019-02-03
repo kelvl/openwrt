@@ -403,6 +403,12 @@ define Device/ea8100
 endef
 TARGET_DEVICES += ea8100
 
+define Device/ea8100-debian
+  $(Device/ea8100)
+  DEVICE_TITLE := Linksys EA8100 Debian
+endef
+TARGET_DEVICES += ea8100-debian
+
 define Device/sap-g3200u3
   DTS := SAP-G3200U3
   DEVICE_TITLE := STORYLiNK SAP-G3200U3
