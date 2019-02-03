@@ -53,15 +53,21 @@
 		reg = <0x140000 0x40000>;
 		read-only;
 	};
+
+	partition@180000 {
+		label = "firmware1";
+		reg = <0x180000 0x2800000>;
+	};
+
 /*
 	partition@180000 {
-		label = "orig_kernel";
+		label = "kernel";
 		reg = <0x180000 0x2800000>;
 		read-only;
 	};
 
 	partition@580000 {
-		label = "orig_rootfs";
+		label = "rootfs";
 		reg = <0x580000 0x2400000>;
 		read-only;
 	};
@@ -72,15 +78,17 @@
 		reg = <0x2980000 0x2800000>;
 	};
 
+/*
 	partition@2980000 {
-		label = "kernel";
+		label = "alt_kernel";
 		reg = <0x2980000 0x2800000>;
 	};
 
 	partition@2d80000 {
-		label = "ubi";
+		label = "alt_rootfs";
 		reg = <0x2d80000 0x2400000>;
 	};
+ */
 
 /*
 	partition@5180000 {
