@@ -48,7 +48,7 @@
 		read-only;
 	};
 
-	partition@140000 {
+	devinfo: partition@140000 {
 		label = "devinfo";
 		reg = <0x140000 0x40000>;
 		read-only;
@@ -142,3 +142,8 @@
 	};
 };
  */
+
+&ethernet {
+	mtd-mac-address = <&devinfo 0x0000>;
+	mtd-mac-address-propname = "hw_mac_addr";
+};
