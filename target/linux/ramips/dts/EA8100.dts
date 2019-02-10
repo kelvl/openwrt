@@ -30,10 +30,11 @@
 		read-only;
 	};
 
-	partition@80000 {
+	uboot_env: partition@80000 {
 		label = "uboot_env";
 		reg = <0x80000 0x40000>;
 		read-only;
+		mtdsplit-uboot-boot_part-var = "boot_part";
 	};
 
 	partition@c0000 {
@@ -57,6 +58,9 @@
 	partition@180000 {
 		label = "firmware1";
 		reg = <0x180000 0x2800000>;
+		mtdsplit-choose-firmware;
+		mtdsplit-choose-firmware-uboot-env-part = <&uboot_env 0x4 0x1000>;
+		mtdsplit-choose-firmware-uboot-env-val = "1";
 	};
 
 /*
@@ -74,8 +78,11 @@
  */
 
 	partition@2980000 {
-		label = "firmware";
+		label = "firmware2";
 		reg = <0x2980000 0x2800000>;
+		mtdsplit-choose-firmware;
+		mtdsplit-choose-firmware-uboot-env-part = <&uboot_env 0x4 0x1000>;
+		mtdsplit-choose-firmware-uboot-env-val = "2";
 	};
 
 /*

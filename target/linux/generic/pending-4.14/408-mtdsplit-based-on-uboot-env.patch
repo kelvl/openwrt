@@ -1,0 +1,219 @@
+From: Leon Poon <szeleung.poon@gmail.com>
+Subject: mtdsplit: split firmware from actual booted partition
+
+For boxes which support more than 1 firmware, info in dts can activate
+this parser to look into uboot env before determining whether to use
+the partition as firmware partition.
+
+Signed-off-by: Leon Poon <szeleung.poon@gmail.com>
+
+Index: linux-4.14.97/drivers/mtd/mtdsplit/Kconfig
+===================================================================
+--- linux-4.14.97.orig/drivers/mtd/mtdsplit/Kconfig
++++ linux-4.14.97/drivers/mtd/mtdsplit/Kconfig
+@@ -74,3 +74,8 @@ config MTD_SPLIT_JIMAGE_FW
+ 	bool "JBOOT Image based firmware partition parser"
+ 	depends on MTD_SPLIT_SUPPORT
+ 	select MTD_SPLIT
++
++config MTD_SPLIT_UBOOT_ENV
++	bool "Uboot env based firmware partition chooser"
++	depends on MTD_SPLIT_SUPPORT
++	select MTD_SPLIT
+Index: linux-4.14.97/drivers/mtd/mtdsplit/Makefile
+===================================================================
+--- linux-4.14.97.orig/drivers/mtd/mtdsplit/Makefile
++++ linux-4.14.97/drivers/mtd/mtdsplit/Makefile
+@@ -11,3 +11,4 @@ obj-$(CONFIG_MTD_SPLIT_EVA_FW) += mtdspl
+ obj-$(CONFIG_MTD_SPLIT_WRGG_FW) += mtdsplit_wrgg.o
+ obj-$(CONFIG_MTD_SPLIT_MINOR_FW) += mtdsplit_minor.o
+ obj-$(CONFIG_MTD_SPLIT_JIMAGE_FW) += mtdsplit_jimage.o
++obj-$(CONFIG_MTD_SPLIT_UBOOT_ENV) += mtdsplit_uboot_env.o
+Index: linux-4.14.97/drivers/mtd/mtdsplit/mtdsplit_uboot_env.c
+===================================================================
+--- /dev/null
++++ linux-4.14.97/drivers/mtd/mtdsplit/mtdsplit_uboot_env.c
+@@ -0,0 +1,156 @@
++/*
++ *  Copyright (C) 2019 Leon Poon <szeleung.poon@gmail.com>
++ *
++ *  This program is free software; you can redistribute it and/or modify it
++ *  under the terms of the GNU General Public License version 2 as published
++ *  by the Free Software Foundation.
++ *
++ */
++
++#define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
++
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/kernel.h>
++#include <linux/slab.h>
++#include <linux/vmalloc.h>
++#include <linux/mtd/mtd.h>
++#include <linux/mtd/partitions.h>
++#include <linux/version.h>
++#include <linux/byteorder/generic.h>
++
++#include "mtdsplit.h"
++
++#ifdef CONFIG_MTD_SPLIT_FIRMWARE_NAME
++#define SPLIT_FIRMWARE_NAME	CONFIG_MTD_SPLIT_FIRMWARE_NAME
++
++static int
++uboot_env_match(struct mtd_info *mtd, loff_t off, size_t mtd_max, const char *propname, const char *propval)
++{
++	size_t read_sz = 1 + strlen(propname) + 1 + strlen(propval) + 1, buf_max = read_sz * 2;
++	char propmatch[read_sz];
++	char cbuf[buf_max + 1];
++	size_t retlen, read;
++	loff_t off_buf = read_sz + 1;
++	char *p = propmatch;
++
++	*(p++) = '\0';
++	p = strcpy(p, propname) + strlen(propname);
++	*(p++) = '=';
++	p = strcpy(p, propval) + strlen(propval);
++	*(p++) = '\0';
++
++	memset(cbuf, '\0', buf_max + 1);
++
++	while ((read = min(buf_max - off_buf, mtd_max - off))) {
++		if (mtd_read(mtd, off, read, &retlen, cbuf + off_buf)) {
++			pr_err("%s: mtd_read(%s, offset=%llu, %zu) failed\n", __func__, mtd->name, off, read);
++			return 0;
++		}
++		off += retlen;
++		off_buf += retlen;
++		for (read = 0; read < off_buf - read_sz; read++)
++			if (!memcmp(cbuf + read, propmatch, read_sz))
++				return 1;
++		for (read = 0; read < read_sz; read++)
++			*(cbuf + read) = *(cbuf + off_buf - read_sz + read);
++		memset(cbuf + read_sz, '\0', read_sz);
++		off_buf = read_sz;
++	}
++	return 0;
++}
++
++static int
++mtdsplit_uboot_env_boot_part_parse_generic(struct mtd_info *master,
++			      const struct mtd_partition **pparts,
++			      struct mtd_part_parser_data *data)
++{
++	struct mtd_partition *parts;
++	struct device_node *mtd_np = NULL;
++	struct device_node *np;
++	phandle phandle;
++	int size;
++	size_t mtd_max;
++	const __be32 *list;
++	const char *part, *propname, *propval;
++	struct mtd_info *mtd;
++	loff_t off;
++	int ret = 0;
++
++	np = mtd_get_of_node(master);
++	if (!np)
++		return -ENODEV;
++
++	propval = of_get_property(np, "mtdsplit-choose-firmware-uboot-env-val", NULL);
++
++	list = of_get_property(np, "mtdsplit-choose-firmware-uboot-env-part", &size);
++	if (!list || (size != (3 * sizeof(*list))))
++		return -EINVAL;
++
++	phandle = be32_to_cpup(list++);
++	if (phandle)
++		mtd_np = of_find_node_by_phandle(phandle);
++	off = be32_to_cpup(list++);
++	mtd_max = be32_to_cpup(list++);
++
++	propname = of_get_property(mtd_np, "mtdsplit-uboot-boot_part-var", NULL);
++	part = of_get_property(mtd_np, "label", NULL);
++	if (!part)
++		part = mtd_np->name;
++	if (!(list = of_get_property(mtd_np, "reg", &size)) || !(mtd_max = min(mtd_max, be32_to_cpup(++list))))
++		return -EINVAL;
++
++	mtd = get_mtd_device_nm(part);
++	if (IS_ERR(mtd))
++		return -ENODEV;
++
++	ret = uboot_env_match(mtd, off, mtd_max, propname, propval);
++
++	put_mtd_device(mtd);
++
++	if (ret > 0) {
++		parts = kzalloc(ret * sizeof(*parts), GFP_KERNEL);
++		if (!parts)
++			return -ENOMEM;
++
++		parts[ret-1].name = SPLIT_FIRMWARE_NAME;
++		parts[ret-1].offset = 0;
++		parts[ret-1].size = master->size;
++		*pparts = parts;
++	}
++
++	return ret;
++}
++
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
++static const struct of_device_id mtdsplit_uboot_env_boot_part_of_match_table[] = {
++	{ .compatible = "denx,uimage" },
++	{},
++};
++#endif
++
++static struct mtd_part_parser uimage_uboot_boot_part_parser = {
++	.owner = THIS_MODULE,
++	.name = "uboot-env-boot_part",
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
++	.of_match_table = mtdsplit_uboot_env_boot_part_of_match_table,
++#endif
++	.parse_fn = mtdsplit_uboot_env_boot_part_parse_generic,
++	.type = MTD_PARSER_TYPE_CHOOSE_FIRMWARE,
++};
++#endif
++
++/**************************************************
++ * Init
++ **************************************************/
++
++static int __init mtdsplit_uboot_env_init(void)
++{
++#ifdef CONFIG_MTD_SPLIT_FIRMWARE_NAME
++	register_mtd_parser(&uimage_uboot_boot_part_parser);
++#endif
++
++	return 0;
++}
++
++module_init(mtdsplit_uboot_env_init);
+Index: linux-4.14.97/include/linux/mtd/partitions.h
+===================================================================
+--- linux-4.14.97.orig/include/linux/mtd/partitions.h
++++ linux-4.14.97/include/linux/mtd/partitions.h
+@@ -77,6 +77,7 @@ enum mtd_parser_type {
+ 	MTD_PARSER_TYPE_DEVICE = 0,
+ 	MTD_PARSER_TYPE_ROOTFS,
+ 	MTD_PARSER_TYPE_FIRMWARE,
++	MTD_PARSER_TYPE_CHOOSE_FIRMWARE,
+ };
+ 
+ struct mtd_part_parser {
+Index: linux-4.14.97/drivers/mtd/mtdpart.c
+===================================================================
+--- linux-4.14.97.orig/drivers/mtd/mtdpart.c
++++ linux-4.14.97/drivers/mtd/mtdpart.c
+@@ -813,6 +813,10 @@ static void mtd_partition_split(struct m
+ 	    !strcmp(part->mtd.name, SPLIT_FIRMWARE_NAME) &&
+ 	    !of_find_property(mtd_get_of_node(&part->mtd), "compatible", NULL))
+ 		split_firmware(master, part);
++
++	if (of_find_property(mtd_get_of_node(&part->mtd), "mtdsplit-choose-firmware", NULL))
++		run_parsers_by_type(part, MTD_PARSER_TYPE_CHOOSE_FIRMWARE);
++
+ }
+ 
+ /*
