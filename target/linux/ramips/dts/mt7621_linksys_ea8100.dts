@@ -37,7 +37,7 @@
 		mtdsplit-uboot-boot_part-var = "boot_part";
 	};
 
-	partition@c0000 {
+	factory: partition@c0000 {
 		label = "factory";
 		reg = <0xc0000 0x40000>;
 		read-only;
@@ -126,29 +126,24 @@
 		};
 	};
 };
-/*
+
 &pcie {
 	status = "okay";
+};
 
-	pcie0 {
-		mt76@0,0 {
-			reg = <0x0000 0 0 0 0>;
-			device_type = "pci";
-			mediatek,mtd-eeprom = <&factory 0x0000>;
-			ieee80211-freq-limit = <5000000 6000000>;
-		};
-	};
-
-	pcie1 {
-		mt76@1,0 {
-			reg = <0x0000 0 0 0 0>;
-			device_type = "pci";
-			mediatek,mtd-eeprom = <&factory 0x8000>;
-			ieee80211-freq-limit = <2400000 2500000>;
-		};
+&pcie0 {
+	mt76@0,0 {
+		reg = <0x0000 0 0 0 0>;
+		mediatek,mtd-eeprom = <&factory 0x0000>;
 	};
 };
- */
+
+&pcie1 {
+	mt76@0,0 {
+		reg = <0x0000 0 0 0 0>;
+		mediatek,mtd-eeprom = <&factory 0x8000>;
+	};
+};
 
 &ethernet {
 	mtd-mac-address = <&devinfo 0x0000>;

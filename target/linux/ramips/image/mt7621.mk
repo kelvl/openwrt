@@ -301,7 +301,7 @@ define Device/linksys_ea8100
   UBINIZE_OPTS := -E 5
   BLOCKSIZE := 128k
   FILESYSTEMS := squashfs
-  DEVICE_PACKAGES := kmod-usb3 uboot-envtools kmod-usb-storage
+  DEVICE_PACKAGES := kmod-usb3 uboot-envtools kmod-usb-storage kmod-mt7615e wpad-basic
   IMAGE_SIZE := 4096k
   IMAGE/sysupgrade.bin := append-kernel | pad-to $$$$(BLOCKSIZE) | append-ubi | linksys-sig
   SUPPORTED_DEVICES += ea8100
