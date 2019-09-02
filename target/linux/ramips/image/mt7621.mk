@@ -311,7 +311,7 @@ TARGET_DEVICES += linksys_ea8100
 define Device/linksys_ea8100_debian
   $(Device/linksys_ea8100)
   DEVICE_TITLE := Linksys EA8100 Debian
-  DEVICE_PACKAGES += kmod-cryptodev kmod-crypto-xts cryptsetup-openssl
+  DEVICE_PACKAGES += kmod-cryptodev kmod-crypto-xts cryptsetup-openssl kmod-fs-nfs-v4 libopenssl-devcrypto
 endef
 TARGET_DEVICES += linksys_ea8100_debian
 
