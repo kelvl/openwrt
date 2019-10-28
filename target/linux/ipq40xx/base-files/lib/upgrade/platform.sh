@@ -37,8 +37,8 @@ zyxel_do_upgrade() {
 
 	tar Oxf $tar_file ${board_dir}/kernel | mtd write - kernel
 
-	if [ "$SAVE_CONFIG" -eq 1 ]; then
-		tar Oxf $tar_file ${board_dir}/root | mtd -j "$CONF_TAR" write - rootfs
+	if [ -n "$UPGRADE_BACKUP" ]; then
+		tar Oxf $tar_file ${board_dir}/root | mtd -j "$UPGRADE_BACKUP" write - rootfs
 	else
 		tar Oxf $tar_file ${board_dir}/root | mtd write - rootfs
 	fi
@@ -48,6 +48,7 @@ platform_do_upgrade() {
 	case "$(board_name)" in
 	8dev,jalapeno |\
 	avm,fritzbox-7530 |\
+	avm,fritzrepeater-1200 |\
 	avm,fritzrepeater-3000 |\
 	qxwlan,e2600ac-c2)
 		nand_do_upgrade "$1"
