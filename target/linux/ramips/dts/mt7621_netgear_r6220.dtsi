@@ -14,6 +14,7 @@
 		led-failsafe = &led_power;
 		led-running = &led_power;
 		led-upgrade = &led_power;
+		label-mac-device = &ethernet;
 	};
 
 	chosen {
@@ -48,8 +49,7 @@
 	};
 
 	keys {
-		compatible = "gpio-keys-polled";
-		poll-interval = <20>;
+		compatible = "gpio-keys";
 
 		wps {
 			label = "wps";
@@ -107,7 +107,7 @@
 };
 
 &ethernet {
-	mtd-mac-address = <&factory 0x00000004>;
+	mtd-mac-address = <&factory 0x4>;
 };
 
 &pinctrl {
