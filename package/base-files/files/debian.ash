@@ -1,7 +1,4 @@
 #!/bin/ash
-for m in /lib/modules/$(uname -r)/*.ko; do
-  modprobe $(basename $m .ko)
-done
 sed -re 's/^boot_run_hook/#\0/g' -i /etc/preinit
 PREINIT=1 . /etc/preinit
 preinit_config_board    # set up the switch and lan ports on eth0.2, and create ip link
