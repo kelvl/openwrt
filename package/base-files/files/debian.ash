@@ -14,6 +14,7 @@ for pi_ifname in eth0.1 eth0.2; do
     ip -4 address flush dev $pi_ifname    # del default address
     ip link set dev $pi_ifname down
 done
+modprobe mt7615e
 mkdir -pv /mnt
 [ -b /dev/sda ] || mknod /dev/sda b 8 0
 sed -re 's/\xFF//g' < /dev/mtdblock4 | egrep ^admin2_passphrase= | sed -re 's/^[^=]*=//g' | tr -d '\r' | tr -d '\n' | cryptsetup --key-file=- open /dev/sda usb &&
