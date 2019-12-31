@@ -1,0 +1,62 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install build tools
+      run: |
+        sudo apt install -y subversion g++ zlib1g-dev build-essential git python python3 libncurses5-dev gawk gettext unzip file libssl-dev wget libelf-dev ecj fastjar java-propose-classpath build-essential libncursesw5-dev python unzip   
+    - name: Update feeds
+      run: |
+        ./scripts/feeds update -a
+        ./scripts/feeds install -a
+    - name: Build
+      run: |
+        cat <<EOF > .config
+        CONFIG_TARGET_ramips=y
+        CONFIG_TARGET_ramips_mt7621=y
+        CONFIG_TARGET_ramips_mt7621_DEVICE_linksys_ea8100=y
+        CONFIG_PACKAGE_cgi-io=y
+        CONFIG_PACKAGE_libiwinfo-lua=y
+        CONFIG_PACKAGE_liblua=y
+        CONFIG_PACKAGE_liblucihttp=y
+        CONFIG_PACKAGE_liblucihttp-lua=y
+        CONFIG_PACKAGE_libubus-lua=y
+        CONFIG_PACKAGE_lua=y
+        CONFIG_PACKAGE_luci=y
+        CONFIG_PACKAGE_luci-app-firewall=y
+        CONFIG_PACKAGE_luci-app-opkg=y
+        CONFIG_PACKAGE_luci-base=y
+        CONFIG_PACKAGE_luci-lib-ip=y
+        CONFIG_PACKAGE_luci-lib-jsonc=y
+        CONFIG_PACKAGE_luci-lib-nixio=y
+        CONFIG_PACKAGE_luci-mod-admin-full=y
+        CONFIG_PACKAGE_luci-mod-network=y
+        CONFIG_PACKAGE_luci-mod-status=y
+        CONFIG_PACKAGE_luci-mod-system=y
+        CONFIG_PACKAGE_luci-proto-ipv6=y
+        CONFIG_PACKAGE_luci-proto-ppp=y
+        CONFIG_PACKAGE_luci-theme-bootstrap=y
+        CONFIG_PACKAGE_rpcd=y
+        CONFIG_PACKAGE_rpcd-mod-file=y
+        CONFIG_PACKAGE_rpcd-mod-iwinfo=y
+        CONFIG_PACKAGE_rpcd-mod-luci=y
+        CONFIG_PACKAGE_rpcd-mod-rrdns=y
+        CONFIG_PACKAGE_uhttpd=y
+        EOF
+        make defconfig
+        make -j$(nproc) V=s
+        ls -lR bin/targets
+    - name: Upload artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        # Artifact name
+        name: targets
+        # Directory containing files to upload
+        path: bin/targets
